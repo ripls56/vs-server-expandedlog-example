@@ -1,0 +1,52 @@
+x-def-logging: &default-logging
+  logging:
+    driver: "loki"
+    options:
+      loki-url: "http://localhost:3100/loki/api/v1/push"
+      loki-batch-size: "100"
+      loki-retries: 2
+      loki-max-backoff: 1000ms
+      loki-timeout: 1s
+
+services:
+  loki:
+    hostname: loki
+    image: grafana/loki:2.9.0
+    environment:
+      TZ: ${SYSTEM_TIMEZONE:-Europe/Moscow}
+    volumes:
+      - ./loki/retention-config.yaml:/etc/loki/retention-config.yaml
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/retention-config.yaml
+
+  grafana:
+    hostname: grafana
+    environment:
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - TZ=${SYSTEM_TIMEZONE:-Europe/Moscow}
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+      
+  vsserver:
+    image: sknnr/vintage-story-server:latest
+    container_name: vsserver-enterypoint
+    restart: unless-stopped
+    <<: *default-logging
+    ports:
+      - 42420:42420
+    environment:
+      - GAME_VERSION=1.20.0-rc.6
+      - GAME_BRANCH=unstable
+    volumes:
+      - ./vsserver-data:/home/vintagestory/data
+      - ./vsserver-server:/home/vintagestory/server
+
+# volumes:
+#   vsserver-data:
+#   vsserver-server:
